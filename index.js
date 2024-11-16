@@ -11,6 +11,7 @@ const session = require("express-session");
 const AuthRoute = require("./routes/AuthRoute.js");
 const UserRoute = require("./routes/UserRoute.js");
 const CustomerRoute = require("./routes/CustomerRoute.js");
+const KostRoute = require("./routes/KostRoute.js");
 
 dotenv.config();
 const app = express();
@@ -41,5 +42,6 @@ app.use("/images", express.static("./public/images"))
 app.use(AuthRoute);
 app.use(UserRoute);
 app.use(CustomerRoute);
+app.use(KostRoute);
 
 app.listen(process.env.APP_PORT, ()=> console.log("Server Sedang berjalan"));

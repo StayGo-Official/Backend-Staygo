@@ -12,6 +12,7 @@ const AuthRoute = require("./routes/AuthRoute.js");
 const UserRoute = require("./routes/UserRoute.js");
 const CustomerRoute = require("./routes/CustomerRoute.js");
 const KostRoute = require("./routes/KostRoute.js");
+const OjekRoute = require("./routes/OjekRoute.js");
 
 dotenv.config();
 const app = express();
@@ -43,5 +44,6 @@ app.use(AuthRoute);
 app.use(UserRoute);
 app.use(CustomerRoute);
 app.use(KostRoute);
+app.use(OjekRoute);
 
 app.listen(process.env.APP_PORT, ()=> console.log("Server Sedang berjalan"));

@@ -6,7 +6,7 @@ const { updateUsers } = require("./UserController.js");
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customers.findAll({
-      attributes: ["id", "username", "email"],
+      attributes: ["id", "username", "email", "noHp", "alamat"],
     });
     res.json(customers);
   } catch (error) {

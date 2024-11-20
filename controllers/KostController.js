@@ -321,19 +321,56 @@ const deleteKost = async (req, res) => {
         id: req.params.id,
       },
     });
+  
     if (!kost) return res.status(404).json({ msg: "No Data Found" });
   
     try {
-      const filepath = `./public/images/${kost.image}`;
-      fs.unlinkSync(filepath);
+      // Cek apakah kost.images adalah array atau string JSON
+      let images = kost.images;
+      
+      // Jika kost.images adalah string, parsing menjadi array
+      if (typeof images === 'string') {
+        try {
+          images = JSON.parse(images); // Parsing string JSON menjadi array
+        } catch (error) {
+          console.error(`Gagal parsing images untuk Kost ID ${kost.id}:`, error.message);
+          return res.status(500).json({ msg: "Gagal menghapus gambar, format data gambar salah." });
+        }
+      }
+  
+      // Menyimpan status keberhasilan penghapusan gambar
+      let imageDeletionSuccess = true;
+  
+      // Menghapus gambar
+      for (const image of images) {
+        // Membuat path absolut ke file gambar
+        const filepath = path.join(__dirname, '..', 'public', 'images', image);
+  
+        try {
+          // Menghapus file menggunakan fs.promises.unlink
+          await fs.promises.unlink(filepath);
+        } catch (err) {
+          console.error(`Gagal menghapus file: ${filepath}`, err);
+          imageDeletionSuccess = false;
+        }
+      }
+  
+      // Jika ada gambar yang gagal dihapus, batalkan penghapusan data kost
+      if (!imageDeletionSuccess) {
+        return res.status(500).json({ msg: "Gagal menghapus gambar. Data kost tidak dapat dihapus." });
+      }
+  
+      // Hapus data kost dari database
       await Kost.destroy({
         where: {
           id: req.params.id,
         },
       });
-      res.status(200).json({ msg: "Kost Deleted Successfuly" });
+  
+      res.status(200).json({ msg: "Kost Deleted Successfully" });
     } catch (error) {
       console.log(error.message);
+      res.status(500).json({ msg: "Server Error" });
     }
   };
 

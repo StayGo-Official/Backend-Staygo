@@ -258,24 +258,61 @@ const updateOjek = async (req, res) => {
 
 const deleteOjek = async (req, res) => {
     const ojek = await Ojek.findOne({
-      where: {
-        id: req.params.id,
-      },
-    });
-    if (!ojek) return res.status(404).json({ msg: "No Data Found" });
-  
-    try {
-      const filepath = `./public/images/${ojek.image}`;
-      fs.unlinkSync(filepath);
-      await Ojek.destroy({
         where: {
           id: req.params.id,
         },
       });
-      res.status(200).json({ msg: "Ojek Deleted Successfuly" });
-    } catch (error) {
-      console.log(error.message);
-    }
+    
+      if (!ojek) return res.status(404).json({ msg: "No Data Found" });
+    
+      try {
+        // Cek apakah ojek.images adalah array atau string JSON
+        let images = ojek.images;
+        
+        // Jika ojek.images adalah string, parsing menjadi array
+        if (typeof images === 'string') {
+          try {
+            images = JSON.parse(images); // Parsing string JSON menjadi array
+          } catch (error) {
+            console.error(`Gagal parsing images untuk ojek ID ${ojek.id}:`, error.message);
+            return res.status(500).json({ msg: "Gagal menghapus gambar, format data gambar salah." });
+          }
+        }
+    
+        // Menyimpan status keberhasilan penghapusan gambar
+        let imageDeletionSuccess = true;
+    
+        // Menghapus gambar
+        for (const image of images) {
+          // Membuat path absolut ke file gambar
+          const filepath = path.join(__dirname, '..', 'public', 'images', image);
+    
+          try {
+            // Menghapus file menggunakan fs.promises.unlink
+            await fs.promises.unlink(filepath);
+          } catch (err) {
+            console.error(`Gagal menghapus file: ${filepath}`, err);
+            imageDeletionSuccess = false;
+          }
+        }
+    
+        // Jika ada gambar yang gagal dihapus, batalkan penghapusan data ojek
+        if (!imageDeletionSuccess) {
+          return res.status(500).json({ msg: "Gagal menghapus gambar. Data ojek tidak dapat dihapus." });
+        }
+    
+        // Hapus data ojek dari database
+        await Ojek.destroy({
+          where: {
+            id: req.params.id,
+          },
+        });
+    
+        res.status(200).json({ msg: "Ojek Deleted Successfully" });
+      } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ msg: "Server Error" });
+      }
   };
 
   module.exports = {

@@ -2,6 +2,7 @@ const Customers = require("../models/CustomerModel.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { updateUsers } = require("./UserController.js");
+const { blacklistedTokens } = require("../middleware/VerifyToken");
 
 const getCustomers = async (req, res) => {
   try {
@@ -109,13 +110,13 @@ const Login = async (req, res) => {
     const accessToken = jwt.sign(
       { userId: customer.id, username: customer.username, email: customer.email, noHp: customer.noHp, alamat: customer.alamat },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     const refreshToken = jwt.sign(
       { userId: customer.id, username: customer.username, email: customer.email, noHp: customer.noHp, alamat: customer.alamat },
       process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     await Customers.update({ refresh_token: refreshToken }, {
@@ -169,27 +170,49 @@ const updateProfile = async (req, res) => {
 };
 
 const Logout = async (req, res) => {
-  const id = req.userId
+  const token = req.headers['authorization']?.split(' ')[1];
+  const id = req.userId;
 
-    Customers.update({ refresh_token: null }, {
-      where: { id }
-    })
-      .then((_) => {
-        res.status(200).json({
-          status: true,
-          message: "Berhasil logout",
-          data: {},
-        })
-      })
-      .catch((error) => {
-        console.log(error)
-        res.status(500).json({
-          status: false,
-          message: "Terjadi kesalahan, silahkan coba lagi",
-          data: {},
-        })
-      })
+  if (!token) {
+    return res.status(400).json({
+      status: false,
+      message: "Token tidak ditemukan. Silakan login ulang.",
+      data: {},
+    });
   }
+
+  if (!id) {
+    return res.status(400).json({
+      status: false,
+      message: "User ID tidak ditemukan. Silakan login ulang.",
+      data: {},
+    });
+  }
+
+  try {
+    // Hapus refresh token dari database
+    await Customers.update(
+      { refresh_token: null },
+      { where: { id } }
+    );
+
+    // Tambahkan access token ke blacklist
+    blacklistedTokens.add(token);
+
+    res.status(200).json({
+      status: true,
+      message: "Berhasil logout",
+      data: {},
+    });
+  } catch (error) {
+    console.log("Error saat logout:", error.message);
+    res.status(500).json({
+      status: false,
+      message: "Terjadi kesalahan, silahkan coba lagi",
+      data: {},
+    });
+  }
+};
 
 
 module.exports = {

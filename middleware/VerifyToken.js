@@ -8,7 +8,7 @@ const verifyToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ msg: "Token tidak ditemukan" });
+    return res.status(401).json({ msg: "Login dulu" });
   }
 
   // Cek apakah token ada dalam daftar blacklist

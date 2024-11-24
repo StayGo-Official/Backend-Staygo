@@ -7,6 +7,9 @@ const Customers = db.define('customers', {
     username: {
         type: DataTypes.STRING
     },
+    nama: {
+        type: DataTypes.STRING
+    },
     email: {
         type: DataTypes.STRING
     },
@@ -16,8 +19,19 @@ const Customers = db.define('customers', {
     alamat: {
         type: DataTypes.STRING
     },
+    ttl: {
+        type: DataTypes.STRING
+    },
     password: {
         type: DataTypes.STRING
+    },
+    image: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    url: {
+        type: DataTypes.STRING,
+        allowNull: true,
     },
     refresh_token: {
         type: DataTypes.TEXT

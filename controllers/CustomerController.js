@@ -1,13 +1,14 @@
 const Customers = require("../models/CustomerModel.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { updateUsers } = require("./UserController.js");
 const { blacklistedTokens } = require("../middleware/VerifyToken");
+const path = require("path");
+const fs = require("fs");
 
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customers.findAll({
-      attributes: ["id", "username", "email", "noHp", "alamat"],
+      attributes: ["id", "username", "nama", "email", "noHp", "alamat", "ttl", "image", "url"],
     });
     res.json(customers);
   } catch (error) {
@@ -56,7 +57,7 @@ const getProfile = async (req, res) => {
 };
 
 const Register = async (req, res) => {
-  const { username, email, noHp, alamat, password, confPassword } = req.body;
+  const { username, nama, email, noHp, alamat, ttl, password, confPassword } = req.body;
 
   if (password !== confPassword) {
     return res.status(400).json({ msg: "Password dan Confirm Password Tidak Cocok" });
@@ -73,9 +74,11 @@ const Register = async (req, res) => {
   try {
     const newCustomer = await Customers.create({
       username,
+      nama,
       email,
       noHp,
       alamat,
+      ttl,
       password: hashPassword,
     });
 
@@ -85,9 +88,11 @@ const Register = async (req, res) => {
         user: {
           id: newCustomer.id,
           username: newCustomer.username,
+          nama: newCustomer.nama,
           email: newCustomer.email,
           noHp: newCustomer.noHp,
           alamat: newCustomer.alamat,
+          ttl: newCustomer.ttl,
         },
       }
     });
@@ -144,30 +149,88 @@ const Login = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const id = req.userId;
+  const customer = await Customers.findOne({
+    where: {
+      id: req.params.id,
+    },
+  });
+  if (!customer) return res.status(404).json({ msg: "No Data Found" });
+
+  let fileName = "";
+
+  if (req.files === null) {
+    // Check if customer already has an image
+    if (!customer.image || customer.image === "null") {
+      // Assign a default image if no file and no existing image
+      fileName = ""; // Replace with your default image file name
+    } else {
+      // Use existing image if no file is uploaded
+      fileName = customer.image;
+    }
+  } else {
+    const file = req.files.file;
+    const fileSize = file.data.length;
+    const ext = path.extname(file.name);
+    fileName = file.md5 + ext;
+    const allowedType = [".png", ".jpg", ".jpeg"];
+
+    if (!allowedType.includes(ext.toLowerCase()))
+      return res.status(422).json({ msg: "Invalid Images" });
+    if (fileSize > 5000000)
+      return res.status(422).json({ msg: "Image must be less than 5 MB" });
+
+    // Check if the existing image needs to be removed
+    if (customer.image && customer.image !== "null") {
+      const filepath = `./public/images/${customer.image}`;
+      if (fs.existsSync(filepath)) {
+        // Only unlink if the file exists
+        fs.unlinkSync(filepath);
+      }
+    }
+
+    // Move the new file to the public/images directory
+    file.mv(`./public/images/${fileName}`, (err) => {
+      if (err) return res.status(500).json({ msg: err.message });
+    });
+  }
+
+  const username = req.body.username;
+  const nama = req.body.nama;
+  const email = req.body.email;
+  const noHp = req.body.noHp;
+  const alamat = req.body.alamat;
+  const ttl = req.body.ttl;
+  const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
 
   try {
-    const customer = await Customers.findOne({
-      where: { id }
+    await Customers.update(
+      {
+        username: username,
+        nama: nama,
+        email: email,
+        noHp: noHp,
+        alamat: alamat,
+        ttl: ttl,
+        image: fileName,
+        url: url,
+      },
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
+    res.status(200).json({
+      status: true,
+      message: "Profile updated successfully",
+      imagePath: fileName,
     });
-
-    if (!customer) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    const { username, email } = req.body;
-
-    customer.username = username || customer.username;
-    customer.email = email || customer.email;
-    // customer.alamat = alamat || customer.alamat;
-    // customer.idKecamatan = idKecamatan || customer.idKecamatan;
-
-    await customer.save();
-
-    res.status(200).json({ data: customer });
   } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan, silahkan coba lagi', error: error.message });
+    console.log(error.message);
+    res.status(500).json({ msg: "Internal Server Error" });
   }
 };
+
 
 const Logout = async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -214,6 +277,27 @@ const Logout = async (req, res) => {
   }
 };
 
+const deleteCustomer = async(req, res)=>{
+  const customer = await Customers.findOne({
+      where:{
+          id : req.params.id
+      }
+  });
+  if(!customer) return res.status(404).json({msg: "No Data Found"});
+
+  try {
+      const filepath = `./public/images/${customer.image}`;
+      fs.unlinkSync(filepath);
+      await Customers.destroy({
+          where:{
+              id : req.params.id
+          }
+      });
+      res.status(200).json({msg: "Customer Deleted Successfuly"});
+  } catch (error) {
+      console.log(error.message);
+  }
+}
 
 module.exports = {
   getCustomers,
@@ -221,5 +305,6 @@ module.exports = {
   updateProfile,
   Register,
   Login,
-  Logout
+  Logout,
+  deleteCustomer
 };

@@ -96,8 +96,8 @@ const getOjekById = async (req, res) => {
     try {
         const response = await Ojek.findOne({
             attributes: [
-                'id', 'nama', 'alamat', 'status', 
-                'gender', 'images', 'url'
+                'id', 'nama', 'namaLengkap', 'alamat', 'status', 
+                'isRide', 'isFood', 'gender', 'images', 'url'
             ],
             where: {
                 id: req.params.id
@@ -152,7 +152,7 @@ const createOjek = async (req, res) => {
         return res.status(400).json({ msg: "No Files Uploaded" });
 
     const {
-        nama, alamat, status, gender
+        nama, namaLengkap, alamat, status, isRide, isFood, gender
     } = req.body;
 
     const files = req.files.files; // Access the uploaded files
@@ -183,8 +183,11 @@ const createOjek = async (req, res) => {
     try {
         const ojek = await Ojek.create({
             nama,
+            namaLengkap,
             alamat,
             status,
+            isRide,
+            isFood,
             gender,
             images: imagePaths,
             url: urls,
@@ -199,62 +202,91 @@ const createOjek = async (req, res) => {
 
 
 const updateOjek = async (req, res) => {
+    // Ambil gambar yang dihapus dari request
+    const removedImages = JSON.parse(req.body.removedImages || '[]');
+  
     const ojek = await Ojek.findOne({
-        where: {
-            id: req.params.id,
-        },
+      where: {
+        id: req.params.id,
+      },
     });
     if (!ojek) return res.status(404).json({ msg: "No Data Found" });
-
-    let fileName = "";
-    if (req.files === null) {
-        fileName = ojek.image;
-    } else {
-        const file = req.files.file;
+  
+    let imagePaths = Array.isArray(ojek.images) ? kost.images : JSON.parse(ojek.images || '[]');
+    let urls = [];
+    const allowedType = ['.png', '.jpg', '.jpeg'];
+  
+    // Proses gambar lama dan tambahkan ke array jika diperlukan
+    imagePaths.forEach(image => {
+      const url = `${req.protocol}://${req.get("host")}/images/${image}`;
+      urls.push(url);
+    });
+  
+    // Proses file baru
+    if (req.files && req.files.files) {
+      const files = Array.isArray(req.files.files) ? req.files.files : [req.files.files];
+  
+      for (const file of files) {
         const fileSize = file.data.length;
         const ext = path.extname(file.name);
-        fileName = file.md5 + ext;
-        const allowedType = [".png", ".jpg", ".jpeg"];
-
+        const fileName = file.md5 + ext;
+  
         if (!allowedType.includes(ext.toLowerCase()))
-            return res.status(422).json({ msg: "Invalid Images" });
+          return res.status(422).json({ msg: `Invalid Image: ${file.name}` });
         if (fileSize > 5000000)
-            return res.status(422).json({ msg: "Image must be less than 5 MB" });
-
-        const filepath = `./public/images/${ojek.image}`;
-        fs.unlinkSync(filepath);
-
-        file.mv(`./public/images/${fileName}`, (err) => {
-            if (err) return res.status(500).json({ msg: err.message });
+          return res.status(422).json({ msg: `Image ${file.name} must be less than 5 MB` });
+  
+        const filepath = `./public/images/${fileName}`;
+  
+        file.mv(filepath, (err) => {
+          if (err) return res.status(500).json({ msg: err.message });
         });
+  
+        // Tambahkan file dan URL baru ke array
+        const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
+        imagePaths.push(fileName);
+        urls.push(url);
+      }
     }
-    const nama = req.body.nama;
-    const alamat = req.body.alamat;
-    const status = req.body.status;
-    const gender = req.body.gender;
-    const url = `${req.protocol}://${req.get("host")}/images/${fileName}`;
-
+  
+    // Hapus gambar yang sudah tidak digunakan
+    removedImages.forEach((image) => {
+      const imagePath = `./public/images/${image}`;
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);  // Menghapus gambar dari server
+      }
+      imagePaths = imagePaths.filter((img) => img !== image);  // Filter gambar yang dihapus
+      urls = urls.filter((url) => !url.includes(image));  // Filter URL gambar yang dihapus
+    });
+  
+    // Update data kost
+    const { nama, namaLengkap, alamat, status, isRide, isFood, gender, } = req.body;
+  
     try {
-        await Ojek.update(
-            {
-                nama: nama,
-                alamat: alamat,
-                status: status,
-                gender: gender,
-                image: fileName,
-                url: url,
-            },
-            {
-                where: {
-                    id: req.params.id,
-                },
-            }
-        );
-        res.status(200).json({ msg: "Ojek Updated Successfuly" });
+      await Ojek.update(
+        {
+          nama,
+          namaLengkap,
+          alamat,
+          status,
+          isRide,
+          isFood,
+          gender,
+          images: imagePaths,
+          url: urls,
+        },
+        {
+          where: {
+            id: req.params.id,
+          },
+        }
+      );
+      res.status(200).json({ msg: "Ojek Updated Successfully" });
     } catch (error) {
-        console.log(error.message);
+      console.log(error.message);
+      res.status(500).json({ msg: "Internal Server Error" });
     }
-};
+  };
 
 const deleteOjek = async (req, res) => {
     const ojek = await Ojek.findOne({

@@ -10,11 +10,23 @@ const Ojek = db.define('ojek', {
         type: DataTypes.STRING,
         allowNull: false
     },
+    namaLengkap: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
     alamat: {
         type: DataTypes.STRING,
         allowNull: false
     },
     status: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true
+    },
+    isRide: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true
+    },
+    isFood: {
         type: DataTypes.BOOLEAN,
         allowNull: true
     },

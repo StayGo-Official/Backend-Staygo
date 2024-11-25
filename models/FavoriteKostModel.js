@@ -32,7 +32,7 @@ const FavoriteKost = db.define(
   }
 );
 
-FavoriteKost.belongsTo(Kost, { foreignKey: "id", onDelete: "CASCADE" });
+FavoriteKost.belongsTo(Kost, { foreignKey: "kostId", onDelete: "CASCADE" });
 FavoriteKost.belongsTo(Customers, {
   foreignKey: "userId",
   onDelete: "CASCADE",

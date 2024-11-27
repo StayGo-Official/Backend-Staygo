@@ -231,6 +231,83 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const changePassword = async (req, res) => {
+  const tokenUserId = req.userId;
+  const requestedId = req.params.id;
+
+  // Verify if token user matches requested ID
+  if (tokenUserId !== requestedId) {
+    return res.status(403).json({
+      status: false,
+      message: "Tidak memiliki akses untuk mengganti password user lain",
+      data: {},
+    });
+  }
+
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return res.status(400).json({
+      status: false,
+      message: "Semua field harus diisi",
+      data: {},
+    });
+  }
+
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({
+      status: false,
+      message: "Password baru dan konfirmasi password tidak cocok",
+      data: {},
+    });
+  }
+
+  try {
+    const customer = await Customers.findOne({
+      where: { id: requestedId }
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        status: false,
+        message: "User tidak ditemukan",
+        data: {},
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, customer.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        status: false,
+        message: "Password saat ini tidak valid",
+        data: {},
+      });
+    }
+
+    const salt = await bcrypt.genSalt();
+    const hashPassword = await bcrypt.hash(newPassword, salt);
+
+    await Customers.update(
+      { password: hashPassword },
+      { where: { id: requestedId } }
+    );
+
+    res.status(200).json({
+      status: true,
+      message: "Password berhasil diubah",
+      data: {},
+    });
+
+  } catch (error) {
+    console.log("Error changing password:", error);
+    res.status(500).json({
+      status: false,
+      message: "Terjadi kesalahan, silahkan coba lagi",
+      data: {},
+    });
+  }
+};
+
 
 const Logout = async (req, res) => {
   const token = req.headers['authorization']?.split(' ')[1];
@@ -305,6 +382,7 @@ module.exports = {
   updateProfile,
   Register,
   Login,
+  changePassword,
   Logout,
   deleteCustomer
 };

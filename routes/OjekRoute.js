@@ -5,14 +5,15 @@ const {
     createOjek,
     updateOjek,
     deleteOjek,
-    allOjek
+    getOjekMobile
 } = require("../controllers/OjekController.js") 
 const { verifyUser, adminOnly } = require("../middleware/AuthUser.js") 
+const { verifyToken } = require("../middleware/VerifyToken.js");
 
 const router = express.Router()
 
 router.get('/ojek', getOjek)
-router.get("/ojek-mobile", allOjek)
+router.get("/ojek-mobile", verifyToken, getOjekMobile)
 router.get('/ojek/:id', getOjekById)
 router.post('/ojek', verifyUser, adminOnly, createOjek)
 router.patch('/ojek/:id', verifyUser, adminOnly, updateOjek)

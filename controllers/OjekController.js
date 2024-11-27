@@ -1,4 +1,5 @@
 const Ojek = require("../models/OjekModel.js");
+const FavoriteOjek = require('../models/FavoriteOjekModel');
 const Users = require("../models/UserModel.js");
 const path = require("path");
 const fs = require("fs");
@@ -45,51 +46,70 @@ const getOjek = async (req, res) => {
     }
 };
 
-const allOjek = (req, res) => {
-    Ojek.findAll()
-        .then((data) => {
-            // Parsing fasilitas untuk setiap item Ojek
-            const parsedData = data.map((item) => {
-                let images = item.images;
-                let url = item.url;
+const getOjekMobile = async (req, res) => {
+  try {
+      // Pastikan req.userId ada dan valid
+      if (!req.userId) {
+          return res.status(400).json({ msg: 'User not authenticated or no user ID found' });
+      }
 
-                if (typeof images === 'string') {
-                    try {
-                        images = JSON.parse(images); // Parse string JSON menjadi array
-                    } catch (error) {
-                        console.error(`Failed to parse images for Kost ID ${item.id}:`, error.message);
-                    }
-                }
+      const userId = req.userId; // Menggunakan req.userId yang sudah ada dari middleware
 
-                if (typeof url === 'string') {
-                    try {
-                        url = JSON.parse(url); // Parse string JSON menjadi array
-                    } catch (error) {
-                        console.error(`Failed to parse url for Kost ID ${item.id}:`, error.message);
-                    }
-                }
+      // Ambil semua data Ojek beserta data pengguna yang terkait
+      const ojek = await Ojek.findAll({
+          include: [{
+              model: Users,
+              attributes: ['username', 'email', 'role']
+          }],
+      });
 
-                return {
-                    ...item.toJSON(), // Konversi Sequelize instance ke objek JSON
-                    images: images, // Pastikan ini adalah array
-                    url: url, // Pastikan ini adalah array
-                };
-            });
+      // Ambil data Ojek yang sudah difavoritkan oleh userId
+      const favoriteOjekIds = await FavoriteOjek.findAll({
+          where: {
+              userId: userId
+          },
+          attributes: ['ojekId']
+      });
 
-            res.status(200).json({
-                status: true,
-                message: "Berhasil mengambil data Ojek",
-                data: parsedData,
-            });
-        })
-        .catch((err) => {
-            console.error(err);
-            res.status(500).json({
-                status: false,
-                message: "Terjadi kesalahan, silahkan coba lagi",
-                data: {},
-            });
-        });
+      // Mengubah array of FavoriteOjek ke dalam array of ojekIds untuk memudahkan pengecekan
+      const favoriteOjekIdList = favoriteOjekIds.map(fav => fav.ojekId);
+
+      const parsedOjek = ojek.map((item) => {
+          let images = item.images;
+          let url = item.url;
+
+          if (typeof images === 'string') {
+              try {
+                  images = JSON.parse(images); // Parsing string JSON menjadi array
+              } catch (error) {
+                  console.error(`Failed to parse images for Ojek ID ${item.id}:`, error.message);
+              }
+          }
+
+          if (typeof url === 'string') {
+              try {
+                  url = JSON.parse(url); // Parsing string JSON menjadi array
+              } catch (error) {
+                  console.error(`Failed to parse url for Ojek ID ${item.id}:`, error.message);
+              }
+          }
+
+          // Cek apakah Ojek ini ada di dalam daftar favorite
+          const isFavorite = favoriteOjekIdList.includes(item.id);
+
+          return {
+              ...item.toJSON(),
+              images: images, // Pastikan ini adalah array
+              url: url, // Pastikan ini adalah array
+              isFavorite: isFavorite // Menambahkan atribut isFavorite
+          };
+      });
+
+      res.status(200).json(parsedOjek);
+  } catch (error) {
+      console.error("Error in getOjek:", error);
+      res.status(500).json({ msg: error.message });
+  }
 };
 
 const getOjekById = async (req, res) => {
@@ -349,7 +369,7 @@ const deleteOjek = async (req, res) => {
 
   module.exports = {
     getOjek,
-    allOjek,
+    getOjekMobile,
     getOjekById,
     createOjek,
     updateOjek,

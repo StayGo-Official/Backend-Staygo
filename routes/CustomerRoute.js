@@ -7,6 +7,7 @@ const router = express.Router();
 router.get("/profile/:id", verifyToken, getProfile );
 router.get('/customers', getCustomers);
 router.patch('/update-profile/:id', verifyToken, updateProfile);
+router.patch('/change-password/:id', verifyToken, updateProfile);
 router.post('/register-customer', Register);
 router.post('/login-customer', Login);
 router.get('/token', refreshToken);

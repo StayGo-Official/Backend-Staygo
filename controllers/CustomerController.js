@@ -4,16 +4,30 @@ const jwt = require("jsonwebtoken");
 const { blacklistedTokens } = require("../middleware/VerifyToken");
 const path = require("path");
 const fs = require("fs");
+const nodemailer = require("nodemailer");
+const dotenv = require("dotenv");
 
 const getCustomers = async (req, res) => {
   try {
     const customers = await Customers.findAll({
-      attributes: ["id", "username", "nama", "email", "noHp", "alamat", "ttl", "image", "url"],
+      attributes: [
+        "id",
+        "username",
+        "nama",
+        "email",
+        "noHp",
+        "alamat",
+        "ttl",
+        "image",
+        "url",
+      ],
     });
     res.json(customers);
   } catch (error) {
     console.log(error);
-    res.status(500).json({ msg: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ msg: "Internal Server Error", error: error.message });
   }
 };
 
@@ -30,7 +44,7 @@ const getProfile = async (req, res) => {
 
   try {
     const customer = await Customers.findOne({
-      where: { id }
+      where: { id },
     });
 
     if (!customer) {
@@ -57,10 +71,13 @@ const getProfile = async (req, res) => {
 };
 
 const Register = async (req, res) => {
-  const { username, nama, email, noHp, alamat, ttl, password, confPassword } = req.body;
+  const { username, nama, email, noHp, alamat, ttl, password, confPassword } =
+    req.body;
 
   if (password !== confPassword) {
-    return res.status(400).json({ msg: "Password dan Confirm Password Tidak Cocok" });
+    return res
+      .status(400)
+      .json({ msg: "Password dan Confirm Password Tidak Cocok" });
   }
 
   const existingEmail = await Customers.findOne({ where: { email } });
@@ -94,10 +111,12 @@ const Register = async (req, res) => {
           alamat: newCustomer.alamat,
           ttl: newCustomer.ttl,
         },
-      }
+      },
     });
   } catch (error) {
-    res.status(500).json({ msg: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .json({ msg: "Internal Server Error", error: error.message });
   }
 };
 
@@ -107,26 +126,42 @@ const Login = async (req, res) => {
       where: { email: req.body.email },
     });
 
-    if (!customer) return res.status(404).json({ msg: "Email tidak ditemukan" });
+    if (!customer)
+      return res.status(404).json({ msg: "Email tidak ditemukan" });
 
     const match = await bcrypt.compare(req.body.password, customer.password);
     if (!match) return res.status(400).json({ msg: "Password Salah" });
 
     const accessToken = jwt.sign(
-      { userId: customer.id, username: customer.username, email: customer.email, noHp: customer.noHp, alamat: customer.alamat },
+      {
+        userId: customer.id,
+        username: customer.username,
+        email: customer.email,
+        noHp: customer.noHp,
+        alamat: customer.alamat,
+      },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "1d" }
     );
 
     const refreshToken = jwt.sign(
-      { userId: customer.id, username: customer.username, email: customer.email, noHp: customer.noHp, alamat: customer.alamat },
+      {
+        userId: customer.id,
+        username: customer.username,
+        email: customer.email,
+        noHp: customer.noHp,
+        alamat: customer.alamat,
+      },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "1d" }
     );
 
-    await Customers.update({ refresh_token: refreshToken }, {
-      where: { id: customer.id }
-    });
+    await Customers.update(
+      { refresh_token: refreshToken },
+      {
+        where: { id: customer.id },
+      }
+    );
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -232,20 +267,10 @@ const updateProfile = async (req, res) => {
 };
 
 const changePassword = async (req, res) => {
-  const tokenUserId = req.userId;
-  const requestedId = req.params.id;
-
-  // Verify if token user matches requested ID
-  if (tokenUserId !== requestedId) {
-    return res.status(403).json({
-      status: false,
-      message: "Tidak memiliki akses untuk mengganti password user lain",
-      data: {},
-    });
-  }
-
+  const id = req.userId; // Get user ID from JWT token
   const { currentPassword, newPassword, confirmPassword } = req.body;
 
+  // Validate input
   if (!currentPassword || !newPassword || !confirmPassword) {
     return res.status(400).json({
       status: false,
@@ -254,6 +279,7 @@ const changePassword = async (req, res) => {
     });
   }
 
+  // Check if new password and confirm password match
   if (newPassword !== confirmPassword) {
     return res.status(400).json({
       status: false,
@@ -263,8 +289,9 @@ const changePassword = async (req, res) => {
   }
 
   try {
+    // Find the customer
     const customer = await Customers.findOne({
-      where: { id: requestedId }
+      where: { id },
     });
 
     if (!customer) {
@@ -275,7 +302,11 @@ const changePassword = async (req, res) => {
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(currentPassword, customer.password);
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      customer.password
+    );
     if (!isPasswordValid) {
       return res.status(401).json({
         status: false,
@@ -284,20 +315,18 @@ const changePassword = async (req, res) => {
       });
     }
 
+    // Hash new password
     const salt = await bcrypt.genSalt();
     const hashPassword = await bcrypt.hash(newPassword, salt);
 
-    await Customers.update(
-      { password: hashPassword },
-      { where: { id: requestedId } }
-    );
+    // Update password in database
+    await Customers.update({ password: hashPassword }, { where: { id } });
 
     res.status(200).json({
       status: true,
       message: "Password berhasil diubah",
       data: {},
     });
-
   } catch (error) {
     console.log("Error changing password:", error);
     res.status(500).json({
@@ -308,9 +337,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-
 const Logout = async (req, res) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+  const token = req.headers["authorization"]?.split(" ")[1];
   const id = req.userId;
 
   if (!token) {
@@ -331,10 +359,7 @@ const Logout = async (req, res) => {
 
   try {
     // Hapus refresh token dari database
-    await Customers.update(
-      { refresh_token: null },
-      { where: { id } }
-    );
+    await Customers.update({ refresh_token: null }, { where: { id } });
 
     // Tambahkan access token ke blacklist
     blacklistedTokens.add(token);
@@ -354,27 +379,132 @@ const Logout = async (req, res) => {
   }
 };
 
-const deleteCustomer = async(req, res)=>{
+const deleteCustomer = async (req, res) => {
   const customer = await Customers.findOne({
-      where:{
-          id : req.params.id
-      }
+    where: {
+      id: req.params.id,
+    },
   });
-  if(!customer) return res.status(404).json({msg: "No Data Found"});
+  if (!customer) return res.status(404).json({ msg: "No Data Found" });
 
   try {
-      const filepath = `./public/images/${customer.image}`;
-      fs.unlinkSync(filepath);
-      await Customers.destroy({
-          where:{
-              id : req.params.id
-          }
-      });
-      res.status(200).json({msg: "Customer Deleted Successfuly"});
+    const filepath = `./public/images/${customer.image}`;
+    fs.unlinkSync(filepath);
+    await Customers.destroy({
+      where: {
+        id: req.params.id,
+      },
+    });
+    res.status(200).json({ msg: "Customer Deleted Successfuly" });
   } catch (error) {
-      console.log(error.message);
+    console.log(error.message);
   }
-}
+};
+
+const sendVerificationCode = async (req, res) => {
+  const { email } = req.body;
+
+  // Generate a 6-digit verification code
+  const verificationCode = Math.floor(100000 + Math.random() * 900000);
+
+  try {
+    // Check if the customer exists
+    const customer = await Customers.findOne({ where: { email } });
+    if (!customer) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+        data: {},
+      });
+    }
+
+    // Update the verification code and isVerified status in the database
+    await Customers.update(
+      { verificationCode, isVerified: false },
+      { where: { email } }
+    );
+
+    // Send the verification code to the customer's email
+    await sendVerificationEmail(email, verificationCode);
+
+    res.status(200).json({
+      status: true,
+      message: "Verification code sent to your email",
+      data: {},
+    });
+  } catch (error) {
+    console.log("Error sending verification code:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error sending verification code",
+      data: {},
+    });
+  }
+};
+
+const verifyEmail = async (req, res) => {
+  const { email, verificationCode } = req.body;
+
+  try {
+    // Find the customer by email
+    const customer = await Customers.findOne({ where: { email } });
+    if (!customer) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+        data: {},
+      });
+    }
+
+    // Check if the provided verification code matches the one in the database
+    if (customer.verificationCode !== verificationCode) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid verification code",
+        data: {},
+      });
+    }
+
+    // Update the isVerified status to true
+    await Customers.update({ isVerified: true }, { where: { email } });
+
+    res.status(200).json({
+      status: true,
+      message: "Email verified successfully",
+      data: {},
+    });
+  } catch (error) {
+    console.log("Error verifying email:", error);
+    res.status(500).json({
+      status: false,
+      message: "Error verifying email",
+      data: {},
+    });
+  }
+};
+
+// Helper function to send the verification email
+const sendVerificationEmail = async (email, verificationCode) => {
+  // Create a transporter using a service like Gmail or Sendgrid
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.APP_PASSWORD,
+    },
+  });
+
+  // Define the email options
+  const mailOptions = {
+    from: process.env.EMAIL,
+    to: email,
+    subject: "Email Verification",
+    text: `Your verification code is: ${verificationCode}`,
+  };
+
+  // Send the email
+  await transporter.sendMail(mailOptions);
+};
 
 module.exports = {
   getCustomers,
@@ -384,5 +514,7 @@ module.exports = {
   Login,
   changePassword,
   Logout,
-  deleteCustomer
+  deleteCustomer,
+  sendVerificationCode,
+  verifyEmail,
 };

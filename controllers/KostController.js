@@ -294,7 +294,7 @@ const updateKost = async (req, res) => {
         urls.push(url);
       }
     }
-  
+
     // Hapus gambar yang sudah tidak digunakan
     removedImages.forEach((image) => {
       const imagePath = `./public/images/${image}`;

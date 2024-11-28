@@ -404,8 +404,7 @@ const deleteCustomer = async (req, res) => {
 const sendVerificationCode = async (req, res) => {
   const { email } = req.body;
 
-  // Generate a 6-digit verification code
-  const verificationCode = Math.floor(100000 + Math.random() * 900000);
+  const verificationCode = Math.floor(1000 + Math.random() * 9000);
 
   try {
     // Check if the customer exists
@@ -494,12 +493,16 @@ const sendVerificationEmail = async (email, verificationCode) => {
     },
   });
 
+  const htmlContent = fs.readFileSync(path.join(__dirname, '../html/email_template.html'), 'utf-8');
+
+  const customizedHtml = htmlContent.replace('{{verificationCode}}', verificationCode);
+
   // Define the email options
   const mailOptions = {
-    from: process.env.EMAIL,
+    from: "StayGo",
     to: email,
     subject: "Email Verification",
-    text: `Your verification code is: ${verificationCode}`,
+    html: customizedHtml,
   };
 
   // Send the email

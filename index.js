@@ -13,6 +13,7 @@ const UserRoute = require("./routes/UserRoute.js");
 const CustomerRoute = require("./routes/CustomerRoute.js");
 const KostRoute = require("./routes/KostRoute.js");
 const FavoriteKostRoute = require("./routes/FavoriteKostRoute.js");
+const OrderKostRoute = require("./routes/OrderKostRoute.js");
 const OjekRoute = require("./routes/OjekRoute.js");
 const FavoriteOjekRoute = require("./routes/FavoriteOjekRoute.js");
 
@@ -47,6 +48,7 @@ app.use(UserRoute);
 app.use(CustomerRoute);
 app.use(KostRoute);
 app.use(FavoriteKostRoute);
+app.use(OrderKostRoute);
 app.use(OjekRoute);
 app.use(FavoriteOjekRoute);
 

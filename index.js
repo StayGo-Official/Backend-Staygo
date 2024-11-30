@@ -16,6 +16,7 @@ const FavoriteKostRoute = require("./routes/FavoriteKostRoute.js");
 const OrderKostRoute = require("./routes/OrderKostRoute.js");
 const OjekRoute = require("./routes/OjekRoute.js");
 const FavoriteOjekRoute = require("./routes/FavoriteOjekRoute.js");
+const OrderOjekRoute = require("./routes/OrderOjekRoute.js");
 
 dotenv.config();
 const app = express();
@@ -51,5 +52,6 @@ app.use(FavoriteKostRoute);
 app.use(OrderKostRoute);
 app.use(OjekRoute);
 app.use(FavoriteOjekRoute);
+app.use(OrderOjekRoute);
 
 app.listen(process.env.APP_PORT, ()=> console.log("Server Sedang berjalan"));

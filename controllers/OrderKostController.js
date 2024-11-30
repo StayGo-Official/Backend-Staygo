@@ -118,14 +118,6 @@ const createOrderKost = async (req, res) => {
         where: { kostId, userId },
       });
   
-      if (existingOrder) {
-        return res.status(200).json({
-          status: true,
-          message: "Kost sudah ada di daftar order",
-          data: existingOrder,
-        });
-      }
-  
       // Tambahkan ke daftar order
       const order = await OrderKost.create({ kostId, userId });
   

@@ -113,11 +113,6 @@ const createOrderKost = async (req, res) => {
         });
       }
   
-      // Cek apakah sudah menjadi order
-      const existingOrder = await OrderKost.findOne({
-        where: { kostId, userId },
-      });
-  
       // Tambahkan ke daftar order
       const order = await OrderKost.create({ kostId, userId });
   

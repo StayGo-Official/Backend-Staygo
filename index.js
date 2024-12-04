@@ -8,6 +8,8 @@ const FileUpload = require("express-fileupload");
 const cors = require("cors");
 const session = require("express-session");
 
+dotenv.config();
+
 const AuthRoute = require("./routes/AuthRoute.js");
 const UserRoute = require("./routes/UserRoute.js");
 const CustomerRoute = require("./routes/CustomerRoute.js");
@@ -17,9 +19,10 @@ const OrderKostRoute = require("./routes/OrderKostRoute.js");
 const OjekRoute = require("./routes/OjekRoute.js");
 const FavoriteOjekRoute = require("./routes/FavoriteOjekRoute.js");
 const OrderOjekRoute = require("./routes/OrderOjekRoute.js");
+const MidtransRoute = require("./routes/MidtransRoute.js");
 
-dotenv.config();
 const app = express();
+const port = process.env.APP_PORT
 
 const sessionStore = SequelizeStore(session.Store)
 
@@ -54,4 +57,6 @@ app.use(OjekRoute);
 app.use(FavoriteOjekRoute);
 app.use(OrderOjekRoute);
 
-app.listen(process.env.APP_PORT, ()=> console.log("Server Sedang berjalan"));
+app.use(MidtransRoute);
+
+app.listen(port, ()=> console.log(`Server Sedang berjalan: http://localhost:${port}`));

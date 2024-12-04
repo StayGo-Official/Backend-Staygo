@@ -22,6 +22,18 @@ const OrderOjek = db.define(
         key: "id", // Use the primary key 'id' of the Kost model
       },
     },
+    harga: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    alamat: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,

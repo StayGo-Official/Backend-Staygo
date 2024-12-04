@@ -67,8 +67,9 @@ const getOrderOjekById = async (req, res) => {
 
 const createOrderOjek = async (req, res) => {
     try {
-      const { ojekId } = req.body;
+      const { ojekId, harga, alamat } = req.body;
       const userId = req.userId;
+      const status = "pending"
   
       // Validasi ojekId
       if (!ojekId) {
@@ -103,13 +104,8 @@ const createOrderOjek = async (req, res) => {
         });
       }
   
-      // Cek apakah sudah menjadi order
-      const existingOrder = await OrderOjek.findOne({
-        where: { ojekId, userId },
-      });
-  
       // Tambahkan ke daftar order
-      const order = await OrderOjek.create({ ojekId, userId });
+      const order = await OrderOjek.create({ ojekId, harga, alamat, status, userId });
   
       return res.status(201).json({
         status: true,
@@ -125,7 +121,48 @@ const createOrderOjek = async (req, res) => {
       });
     }
   };
-  
+
+  const updateOrderOjek = async (req, res) => {
+    const orderId = req.params.id;  // Ambil ID order dari params
+    try {
+        // Cari order Ojek berdasarkan ID
+        const order = await OrderOjek.findByPk(orderId);
+
+        // Jika order tidak ditemukan, kirimkan response 404
+        if (!order) {
+            return res.status(404).json({
+                status: false,
+                message: "Order tidak ditemukan",
+            });
+        }
+
+        // Pastikan order status saat ini adalah "pending" sebelum diupdate
+        if (order.status !== "pending") {
+            return res.status(400).json({
+                status: false,
+                message: "Order tidak dapat diupdate karena status bukan 'pending'",
+            });
+        }
+
+        // Perbarui status menjadi 'success'
+        order.status = "success";
+        await order.save();  // Simpan perubahan ke database
+
+        // Kirimkan response sukses
+        res.status(200).json({
+            status: true,
+            message: "Status order berhasil diperbarui menjadi 'success'",
+            data: order,
+        });
+    } catch (error) {
+        console.error("Error saat mengupdate order:", error.message);
+        return res.status(500).json({
+            status: false,
+            message: "Terjadi kesalahan, silakan coba lagi",
+            error: error.message,
+        });
+    }
+};
 
 const deleteOrderOjek = async (req, res) => {
     try {
@@ -148,5 +185,6 @@ module.exports = {
     getOrderOjek,
     getOrderOjekById,
     createOrderOjek,
+    updateOrderOjek,
     deleteOrderOjek
 };

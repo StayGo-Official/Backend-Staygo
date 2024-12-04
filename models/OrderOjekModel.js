@@ -26,7 +26,11 @@ const OrderOjek = db.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    alamat: {
+    lokasi: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    tujuan: {
       type: DataTypes.STRING,
       allowNull: false,
     },

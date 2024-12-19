@@ -9,9 +9,11 @@ const {
 } = require("../controllers/OrderOjekController.js") 
 
 const { verifyToken } = require("../middleware/VerifyToken.js");
+const { verifyUser, adminOnly } = require("../middleware/AuthUser.js") 
 
 const router = express.Router()
 
+router.get('/order-ojek-admin', verifyUser, adminOnly, getOrderOjek)
 router.get('/order-ojek', verifyToken, getOrderOjek)
 router.get('/order-ojek/:id', getOrderOjekById)
 router.post('/order-ojek', verifyToken, createOrderOjek)
